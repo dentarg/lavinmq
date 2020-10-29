@@ -25,6 +25,7 @@ module AvalancheMQ
   class Boot
     @tls_context : (OpenSSL::SSL::Context::Server|Nil)
     @lock : File
+    @first_shutdown_attempt = true
 
     def initialize(@config : AvalancheMQ::Config)
       puts "AvalancheMQ #{AvalancheMQ::VERSION}"
@@ -120,65 +121,68 @@ module AvalancheMQ
       end
     end
 
+    def dump_debug_info
+      STDOUT.puts System.resource_usage
+      STDOUT.puts GC.prof_stats
+      fcount = 0
+      Fiber.list { fcount += 1 }
+      puts "Fiber count: #{fcount}"
+      AvalancheMQ::Reporter.report(@amqp_server)
+      STDOUT.puts "String pool size: #{AMQ::Protocol::ShortString::POOL.size}"
+      File.open(File.join(@amqp_server.data_dir, "string_pool.dump"), "w") do |f|
+        STDOUT.puts "Dumping string pool to #{f.path}"
+        AvalancheMQ::Reporter.dump_string_pool(f)
+      end
+      STDOUT.flush
+    end
+
+    def run_gc
+      STDOUT.puts "Garbage collecting"
+      STDOUT.flush
+      GC.collect
+    end
+
+    def reload_server
+      SystemD.notify("RELOADING=1\n")
+      if @config.config_file.empty?
+        @log.info { "No configuration file to reload" }
+      else
+        @log.info { "Reloading configuration file '#{@config.config_file}'" }
+        @config.parse(@config.config_file)
+        reload_log
+        reload_tls_context
+      end
+      SystemD.notify("READY=1\n")
+    end
+
+    def shutdown_server
+      if @first_shutdown_attempt
+        @first_shutdown_attempt = false
+        SystemD.notify("STOPPING=1\n")
+        #@amqp_server.vhosts.each do |_, vh|
+        #  SystemD.store_fds(vh.connections.map(&.fd), "vhost=#{vh.dir}")
+        #end
+        puts "Shutting down gracefully..."
+        @amqp_server.close
+        @http_server.try &.close
+        @lock.close
+        puts "Fibers: "
+        Fiber.yield
+        Fiber.list { |f| puts f.inspect }
+        exit 0
+      else
+        puts "Fibers: "
+        Fiber.list { |f| puts f.inspect }
+        exit 1
+      end
+    end
+
     def setup_signal_traps
-      Signal::USR1.trap do
-        STDOUT.puts System.resource_usage
-        STDOUT.puts GC.prof_stats
-        fcount = 0
-        Fiber.list { fcount += 1 }
-        puts "Fiber count: #{fcount}"
-        AvalancheMQ::Reporter.report(@amqp_server)
-        STDOUT.puts "String pool size: #{AMQ::Protocol::ShortString::POOL.size}"
-        File.open(File.join(@amqp_server.data_dir, "string_pool.dump"), "w") do |f|
-          STDOUT.puts "Dumping string pool to #{f.path}"
-          AvalancheMQ::Reporter.dump_string_pool(f)
-        end
-        STDOUT.flush
-      end
-
-      Signal::USR2.trap do
-        STDOUT.puts "Garbage collecting"
-        STDOUT.flush
-        GC.collect
-      end
-
-      Signal::HUP.trap do
-        SystemD.notify("RELOADING=1\n")
-        if @config.config_file.empty?
-          @log.info { "No configuration file to reload" }
-        else
-          @log.info { "Reloading configuration file '#{@config.config_file}'" }
-          @config.parse(@config.config_file)
-          reload_log
-          reload_tls_context
-        end
-        SystemD.notify("READY=1\n")
-      end
-
-      first_shutdown_attempt = true
-      shutdown = ->(_s : Signal) do
-        if first_shutdown_attempt
-          first_shutdown_attempt = false
-          SystemD.notify("STOPPING=1\n")
-          #@amqp_server.vhosts.each do |_, vh|
-          #  SystemD.store_fds(vh.connections.map(&.fd), "vhost=#{vh.dir}")
-          #end
-          puts "Shutting down gracefully..."
-          @amqp_server.close
-          @http_server.try &.close
-          @lock.close
-          puts "Fibers: "
-          Fiber.yield
-          Fiber.list { |f| puts f.inspect }
-          exit 0
-        else
-          puts "Fibers: "
-          Fiber.list { |f| puts f.inspect }
-          exit 1
-        end
-      end
-      Signal::INT.trap &shutdown
-      Signal::TERM.trap &shutdown
+      Signal::USR1.trap { dump_debug_info }
+      Signal::USR2.trap { run_gc }
+      Signal::HUP.trap { reload_server }
+      Signal::INT.trap { shutdown_server }
+      Signal::TERM.trap { shutdown_server }
     end
 
     def initiate_tls_context
