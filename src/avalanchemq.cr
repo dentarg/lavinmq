@@ -19,10 +19,10 @@ require "./avalanchemq/server"
 require "./avalanchemq/http/http_server"
 require "./avalanchemq/log_formatter"
 
-AvalancheMQ::Boot.new(config) # start/stop
+AvalancheMQ::Launcher.new(config) # start/stop
 
 module AvalancheMQ
-  class Boot
+  class Launcher
     @tls_context : (OpenSSL::SSL::Context::Server|Nil)
     @lock : File
     @first_shutdown_attempt = true
