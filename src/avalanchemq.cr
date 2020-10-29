@@ -58,25 +58,18 @@ module AvalancheMQ
 
     def listen
       SystemD.listen_fds_with_names.each do |fd, name|
-        case name
-        when @config.amqp_systemd_socket_name, "unknown"
-          case
-          when SystemD.is_tcp_listener?(fd)
-            spawn @amqp_server.listen(TCPServer.new(fd: fd)), name: "AMQP server listener"
-          when SystemD.is_unix_stream_listener?(fd)
-            spawn @amqp_server.listen(UNIXServer.new(fd: fd)), name: "AMQP server listener"
-          else
-            raise "Unsupported amqp socket type"
-          end
-        when @config.http_systemd_socket_name
-          case
-          when SystemD.is_tcp_listener?(fd)
+        protocol = systemd_socket_protocol(name)
+        type = systemd_fd_type(fd)
+
+        case {protocol, type}
+        when {:amqp, :tcp}
+          spawn @amqp_server.listen(TCPServer.new(fd: fd)), name: "AMQP server listener"
+        when {:amqp, :unix}
+          spawn @amqp_server.listen(UNIXServer.new(fd: fd)), name: "AMQP server listener"
+        when {:http, :tcp}
             @http_server.bind(TCPServer.new(fd: fd))
-          when SystemD.is_unix_stream_listener?(fd)
+        when {:http, :unix}
             @http_server.bind(UNIXServer.new(fd: fd))
-          else
-            raise "Unsupported http socket type"
-          end
         else
           # TODO: support resuming client connections
           # io = TCPSocket.new(fd: fd)
@@ -86,38 +79,48 @@ module AvalancheMQ
         end
       end
 
-      if @config.amqp_port > 0
-        spawn @amqp_server.listen(@config.amqp_bind, @config.amqp_port),
-          name: "AMQP listening on #{@config.amqp_port}"
-      end
-
-      if @config.amqps_port > 0
-        if ctx = @tls_context
-          spawn @amqp_server.listen_tls(@config.amqp_bind, @config.amqps_port, ctx),
-            name: "AMQPS listening on #{@config.amqps_port}"
-        else
-          @log.warn { "Certificate for AMQPS not @configured" }
+      tls = @tls_context
+      @config.configured_tcp_listeners.each do |protocol, bind, port|
+        case {protocol, tls}
+        when {:amqp, _}
+          spawn @amqp_server.listen(bind, port), name: "AMQP listening on #{port}"
+        when {:amqps, OpenSSL::SSL::Context::Server}
+          spawn @amqp_server.listen_tls(bind, port, tls), name: "AMQPS listening on #{port}"
+        when {:http, _}
+          @http_server.bind_tcp(bind, port)
+        when {:https, OpenSSL::SSL::Context::Server}
+          @http_server.bind_tls(bind, port, tls)
         end
       end
 
-      unless @config.unix_path.empty?
-        spawn @amqp_server.listen_unix(@config.unix_path), name: "AMQP listening at #{@config.unix_path}"
-      end
-
-      if @config.http_port > 0
-        @http_server.bind_tcp(@config.http_bind, @config.http_port)
-      end
-      if @config.https_port > 0
-        if ctx = @tls_context
-          @http_server.bind_tls(@config.http_bind, @config.https_port, ctx)
+      @config.configured_socket_listeners.each do |protocol, path|
+        case protocol
+        when :amqp
+          spawn @amqp_server.listen_unix(path), name: "AMQP listening at #{path}"
+        when :http
+          @http_server.bind_unix(path)
         end
       end
-      unless @config.http_unix_path.empty?
-        @http_server.bind_unix(@config.http_unix_path)
-      end
+
       @http_server.bind_internal_unix
       spawn(name: "HTTP listener") do
         @http_server.not_nil!.listen
+      end
+    end
+
+    def systemd_fd_type(fd)
+      case
+      when SystemD.is_tcp_listener?(fd) then :tcp
+      when SystemD.is_unix_stream_listener?(fd) then :unix
+      end
+    end
+
+    def systemd_socket_protocol(name)
+      case name
+      when @config.amqp_systemd_socket_name then :amqp
+      when @config.http_systemd_socket_name then :http
+      else
+        raise "Unsupported #{name} socket type"
       end
     end
 
@@ -186,7 +189,7 @@ module AvalancheMQ
     end
 
     def initiate_tls_context
-      return if @config.tls_cert_path.empty?
+      return unless @config.tls_configured?
       context = OpenSSL::SSL::Context::Server.new
       context.add_options(OpenSSL::SSL::Options.new(0x40000000)) # disable client initiated renegotiation
       @tls_context = context
