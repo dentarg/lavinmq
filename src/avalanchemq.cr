@@ -67,9 +67,9 @@ module AvalancheMQ
         when {:amqp, :unix}
           spawn @amqp_server.listen(UNIXServer.new(fd: fd)), name: "AMQP server listener"
         when {:http, :tcp}
-            @http_server.bind(TCPServer.new(fd: fd))
+          @http_server.bind(TCPServer.new(fd: fd))
         when {:http, :unix}
-            @http_server.bind(UNIXServer.new(fd: fd))
+          @http_server.bind(UNIXServer.new(fd: fd))
         else
           # TODO: support resuming client connections
           # io = TCPSocket.new(fd: fd)
@@ -81,15 +81,15 @@ module AvalancheMQ
 
       tls = @tls_context
       @config.configured_tcp_listeners.each do |protocol, bind, port|
-        case {protocol, tls}
-        when {:amqp, _}
+        case protocol
+        when :amqp
           spawn @amqp_server.listen(bind, port), name: "AMQP listening on #{port}"
-        when {:amqps, OpenSSL::SSL::Context::Server}
-          spawn @amqp_server.listen_tls(bind, port, tls), name: "AMQPS listening on #{port}"
-        when {:http, _}
+        when :amqps
+          spawn @amqp_server.listen_tls(bind, port, tls.not_nil!), name: "AMQPS listening on #{port}"
+        when :http
           @http_server.bind_tcp(bind, port)
-        when {:https, OpenSSL::SSL::Context::Server}
-          @http_server.bind_tls(bind, port, tls)
+        when :https
+          @http_server.bind_tls(bind, port, tls.not_nil!)
         end
       end
 
