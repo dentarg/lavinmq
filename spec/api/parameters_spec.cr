@@ -70,10 +70,24 @@ describe AvalancheMQ::HTTP::ParametersController do
   describe "PUT /api/parameters/component/vhost/name" do
     it "should create parameters for a component on vhost" do
       body = %({
-        "value": {}
+        "value": { "key": "value" }
+      })
+      response = put("/api/parameters/test/%2f/name", body: body)
+      response.status_code.should eq 201
+      s.vhosts["/"].parameters[{"test", "name"}].value.should eq({"key" => "value"})
+    ensure
+      s.vhosts["/"].delete_parameter("test", "name")
+    end
+
+    it "should update parameters for a component on vhost" do
+      p = AvalancheMQ::Parameter.new("test", "name", JSON::Any.new(%({ "key": "old value" })))
+      s.vhosts["/"].add_parameter(p)
+      body = %({
+        "value": { "key": "new value" }
       })
       response = put("/api/parameters/test/%2f/name", body: body)
       response.status_code.should eq 204
+      s.vhosts["/"].parameters[{"test", "name"}].value.should eq({"key" => "new value"})
     ensure
       s.vhosts["/"].delete_parameter("test", "name")
     end
@@ -130,7 +144,20 @@ describe AvalancheMQ::HTTP::ParametersController do
         "value": {}
       })
       response = put("/api/global-parameters/name", body: body)
+      response.status_code.should eq 201
+    ensure
+      s.delete_parameter(nil, "name")
+    end
+
+    it "should update global parameter" do
+      p = AvalancheMQ::Parameter.new(nil, "name", JSON::Any.new(%({ "key": "old value" })))
+      s.add_parameter(p)
+      body = %({
+        "value": { "key": "new value" }
+      })
+      response = put("/api/global-parameters/name", body: body)
       response.status_code.should eq 204
+      s.parameters[{nil, "name"}].value.should eq({"key" => "new value"})
     ensure
       s.delete_parameter(nil, "name")
     end
@@ -211,9 +238,26 @@ describe AvalancheMQ::HTTP::ParametersController do
         "pattern": ".*"
       })
       response = put("/api/policies/%2f/name", body: body)
-      response.status_code.should eq 204
+      response.status_code.should eq 201
+      s.vhosts["/"].policies["name"].definition["max-length"].as_i.should eq 10
     ensure
       s.vhosts["/"].delete_policy("name")
+    end
+
+    it "should update policy" do
+      policy_name = "test"
+      definitions = {"max-length" => JSON::Any.new(10_i64)}
+      s.vhosts["/"].add_policy(policy_name, /^.*$/, AvalancheMQ::Policy::Target::All, definitions, -10_i8)
+
+      body = %({
+        "pattern": ".*",
+        "definition": { "max-length": 20 }
+      })
+      response = put("/api/policies/%2f/#{policy_name}", body: body)
+      response.status_code.should eq 204
+      s.vhosts["/"].policies[policy_name].definition["max-length"].as_i.should eq 20
+    ensure
+      s.vhosts["/"].delete_policy(policy_name)
     end
 
     it "should handle request with empty body" do
