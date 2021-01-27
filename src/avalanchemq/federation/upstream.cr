@@ -94,7 +94,7 @@ module AvalancheMQ
         links.each(&.terminate)
         if sync
           loop do
-            break if links.all?(&.terminated?)
+            break if links.all?(&.state.terminated?)
             Fiber.yield
           end
         end

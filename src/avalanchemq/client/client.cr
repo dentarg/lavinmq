@@ -52,8 +52,8 @@ module AvalancheMQ
       @heartbeat_timeout = tune_ok.heartbeat
       @heartbeat_interval = tune_ok.heartbeat.zero? ? nil : (tune_ok.heartbeat / 2).seconds
       @auth_mechanism = start_ok.mechanism
-      @name = "#{@remote_address} -> #{@local_address}"
       @client_properties = start_ok.client_properties
+      @name = @client_properties["connection_name"]?.try(&.as(String)) || "#{@remote_address} -> #{@local_address}"
       @connected_at = Time.utc.to_unix_ms
       @channels = Hash(UInt16, Client::Channel).new
       @exclusive_queues = Array(Queue).new
