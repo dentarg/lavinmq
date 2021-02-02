@@ -66,10 +66,12 @@ module AvalancheMQ
         end
 
         private def run_loop
+          puts "#{Time.monotonic} RUN LOOP #{@state} #{@upstream.vhost.name}/#{name} #{self.object_id}"
           loop do
             break if @state.terminating?
             state(State::Starting)
             start_link
+            puts "#{Time.monotonic} START_LINK RETURNED #{@state} #{@upstream.vhost.name}/#{name} #{self.object_id}"
             break if @state.terminating?
             state(State::Stopped)
             sleep @upstream.reconnect_delay.seconds
