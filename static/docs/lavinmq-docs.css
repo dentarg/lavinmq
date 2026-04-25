@@ -1,0 +1,101 @@
+@font-face {
+  font-family: Inter;
+  src: url("../fonts/Inter-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Inter;
+  src: url("../fonts/Inter-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Inter;
+  src: url("../fonts/Inter-Italic.woff2") format("woff2");
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Inter;
+  src: url("../fonts/Inter-SemiBoldItalic.woff2") format("woff2");
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+:root {
+  --lmq-header-height: 48px;
+  --lmq-header-bg: #FFFFFF;
+  --lmq-header-fg: #141414;
+  --lmq-header-border: rgba(0, 0, 0, 0.1);
+  --lmq-header-accent: #3c9368;
+}
+
+html.theme-dark {
+  --lmq-header-bg: #1D1D1D;
+  --lmq-header-fg: #fafafa;
+  --lmq-header-border: rgba(247, 245, 242, 0.1);
+  --lmq-header-accent: #54BE7E;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--lmq-header-bg);
+}
+
+.lavinmq-docs-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--lmq-header-height);
+  padding: 0 20px;
+  background: var(--lmq-header-bg);
+  border-bottom: 1px solid var(--lmq-header-border);
+  color: var(--lmq-header-fg);
+  font-weight: 600;
+}
+
+.lavinmq-docs-header img {
+  height: 24px;
+  width: 24px;
+}
+
+.lavinmq-docs-title {
+  font-size: 15px;
+}
+
+.lavinmq-docs-header .spacer {
+  flex: 1;
+}
+
+.lavinmq-docs-header a {
+  color: var(--lmq-header-accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.lavinmq-docs-header a:hover {
+  text-decoration: underline;
+}
+
+#redoc-container {
+  min-height: calc(100vh - var(--lmq-header-height));
+}
+
+/* Make Redoc's sticky sidebar/right panel align below the header */
+#redoc-container .menu-content,
+#redoc-container [role="navigation"] {
+  top: var(--lmq-header-height) !important;
+  height: calc(100vh - var(--lmq-header-height)) !important;
+}

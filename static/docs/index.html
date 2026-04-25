@@ -4,18 +4,112 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>LavinMQ HTTP API</title>
-    <script src="../js/lib/elements-8.2.0.js"></script>
-    <link rel="stylesheet" href="../js/lib/elements-8.2.0.css">
+    <link rel="icon" href="../img/favicon.png">
+    <link rel="stylesheet" href="lavinmq-docs.css">
   </head>
   <body>
-    <elements-api
-      apiDescriptionUrl="openapi.yaml"
-      router="hash"
-      layout="sidebar"
-      logo="../img/favicon.png"
-      tryItCredentialsPolicy="same-origin"
-      hideSchemas="true"
-      />
+    <header class="lavinmq-docs-header">
+      <img src="../img/favicon.png" alt="LavinMQ">
+      <span class="lavinmq-docs-title">LavinMQ HTTP API</span>
+      <span class="spacer"></span>
+      <a href="../">Back to management UI</a>
+    </header>
+    <div id="redoc-container"></div>
+    <script src="../js/lib/redoc-2.5.2.standalone.js"></script>
+    <script>
+      (function () {
+        var classes = (window.localStorage.getItem('lmq.stateclasses') || '').split(' ').filter(Boolean);
+        var explicit = classes.indexOf('theme-dark') !== -1 || classes.indexOf('theme-light') !== -1;
+        var dark = explicit
+          ? classes.indexOf('theme-dark') !== -1
+          : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.add(dark ? 'theme-dark' : 'theme-light');
+
+        var palette = dark ? {
+          textPrimary: '#fafafa',
+          textSecondary: '#9D9C9A',
+          accent: '#54BE7E',
+          background: '#181818',
+          backgroundAlt: '#1D1D1D',
+          backgroundCode: '#2d2c2c',
+          border: 'rgba(247, 245, 242, 0.1)',
+          sidebarBg: '#1D1D1D',
+          rightPanelBg: '#1D1D1D'
+        } : {
+          textPrimary: '#141414',
+          textSecondary: '#6B7280',
+          accent: '#3c9368',
+          background: '#FFFFFF',
+          backgroundAlt: '#F4F4F4',
+          backgroundCode: '#f3f4f6',
+          border: 'rgba(0, 0, 0, 0.1)',
+          sidebarBg: '#F4F4F4',
+          rightPanelBg: '#1D1D1D'
+        };
+
+        var fontStack = 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+        var monoStack = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+
+        var theme = {
+          colors: {
+            primary: { main: palette.accent },
+            success: { main: '#54BE7E' },
+            warning: { main: '#e2b149' },
+            error: { main: '#ED4337' },
+            text: {
+              primary: palette.textPrimary,
+              secondary: palette.textSecondary
+            },
+            border: { dark: palette.border, light: palette.border },
+            http: {
+              get: '#3c9368',
+              post: '#54BE7E',
+              put: '#e2b149',
+              options: '#947EF1',
+              patch: '#e2b149',
+              delete: '#ED4337',
+              basic: '#6B7280',
+              link: '#3c9368',
+              head: '#947EF1'
+            }
+          },
+          typography: {
+            fontSize: '14px',
+            fontFamily: fontStack,
+            headings: { fontFamily: fontStack, fontWeight: '600' },
+            code: { fontFamily: monoStack, color: palette.textPrimary, backgroundColor: palette.backgroundCode },
+            links: { color: palette.accent, visited: palette.accent, hover: palette.accent }
+          },
+          sidebar: {
+            backgroundColor: palette.sidebarBg,
+            textColor: palette.textPrimary,
+            activeTextColor: palette.accent,
+            width: '260px'
+          },
+          rightPanel: {
+            backgroundColor: palette.rightPanelBg,
+            textColor: '#fafafa',
+            width: '40%'
+          },
+          codeBlock: {
+            backgroundColor: dark ? '#0f0f0f' : '#1D1D1D'
+          }
+        };
+
+        var options = {
+          theme: theme,
+          hideDownloadButton: false,
+          hideHostname: false,
+          expandResponses: '200,201',
+          jsonSampleExpandLevel: 2,
+          nativeScrollbars: false,
+          pathInMiddlePanel: true,
+          requiredPropsFirst: true,
+          scrollYOffset: 'header.lavinmq-docs-header'
+        };
+
+        Redoc.init('openapi.yaml', options, document.getElementById('redoc-container'));
+      })();
+    </script>
   </body>
 </html>
-

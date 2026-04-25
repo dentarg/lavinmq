@@ -5,7 +5,7 @@ CTL_SOURCES := $(shell find src/lavinmqctl -name '*.cr' 2> /dev/null)
 VIEW_SOURCES := $(wildcard views/*.ecr)
 VIEW_TARGETS := $(patsubst views/%.ecr,static/%.html,$(VIEW_SOURCES))
 VIEW_PARTIALS := $(wildcard views/partials/*.ecr)
-JS := static/js/lib/chunks/helpers.segment.js static/js/lib/chart.js static/js/lib/luxon.js static/js/lib/chartjs-adapter-luxon.esm.js static/js/lib/elements-8.2.0.js static/js/lib/elements-8.2.0.css $(wildcard static/js/*.js)
+JS := static/js/lib/chunks/helpers.segment.js static/js/lib/chart.js static/js/lib/luxon.js static/js/lib/chartjs-adapter-luxon.esm.js static/js/lib/redoc-2.5.2.standalone.js $(wildcard static/js/*.js)
 CRYSTAL_FLAGS := --release
 override CRYSTAL_FLAGS += --stats -Dpreview_mt -Dexecution_context --link-flags="$(LDFLAGS)"
 .DELETE_ON_ERROR:
@@ -58,13 +58,9 @@ static/js/lib/chartjs-adapter-luxon.esm.js: | static/js/lib
 	sed -i'' -e "s|\(import { _adapters } from\).*|\1 './chart.js'|; s|\(import { DateTime } from\).*|\1 './luxon.js'|" $@
 	[ "17d7b6567d656a004f86b6b5cbdbe64cb308e9a2ebfa7675caa79ba0bc72ef91 *$@" = "$$(openssl dgst -sha256 -r $@)" ]
 
-static/js/lib/elements-8.2.0.js: | static/js/lib
-	curl --fail --retry 5 -sLo $@ https://unpkg.com/@stoplight/elements@8.2.0/web-components.min.js
-	[ "598862da6d551769ebad9d61d4e3037535de573a13d3e0bd1ded4c5fc65c5885 *$@" = "$$(openssl dgst -sha256 -r $@)" ]
-
-static/js/lib/elements-8.2.0.css: | static/js/lib
-	curl --fail --retry 5 -sLo $@ https://unpkg.com/@stoplight/elements@8.2.0/styles.min.css
-	[ "119784e23ffc39b6fa3fdb3df93f391f8250e8af141b78dfc3b6bed86079f93b *$@" = "$$(openssl dgst -sha256 -r $@)" ]
+static/js/lib/redoc-2.5.2.standalone.js: | static/js/lib
+	curl --fail --retry 5 -sLo $@ https://unpkg.com/redoc@2.5.2/bundles/redoc.standalone.js
+	[ "6beb5aea23b71d09122ee35de8f326e38aec050e774f3bfba1f34e5c36608986 *$@" = "$$(openssl dgst -sha256 -r $@)" ]
 
 man1/lavinmq.1: bin/lavinmq | man1
 	help2man -Nn "fast and advanced message queue server" $< -o $@

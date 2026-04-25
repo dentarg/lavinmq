@@ -137,6 +137,21 @@ components:
       "$ref": "./schemas/vhosts.yaml#/vhost"
     vhosts:
       "$ref": "./schemas/vhosts.yaml#/vhosts"
+    vhost-limits:
+      type: object
+      properties:
+        vhost:
+          type: string
+          description: Name of vhost.
+        value:
+          type: object
+          properties:
+            max-connections:
+              type: integer
+              description: Maximum number of connections allowed.
+            max-queues:
+              type: integer
+              description: Maximum number of queues allowed.
     auth-PutHashPasswordRequestBody:
       "$ref": "./schemas/auth.yaml#/PutHashPasswordRequestBody"
     auth-PasswordHash:
